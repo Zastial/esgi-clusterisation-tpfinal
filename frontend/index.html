@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projet Final - Clusteurisation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { color: #333; }
+        .api-section { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Application Microservices</h1>
+    <p>Bienvenue sur l'application de démonstration de clusteurisation de conteneurs.</p>
+
+    <div class="api-section">
+        <h2>Catalogue API</h2>
+        <p>Route: GET /catalogue</p>
+        <button onclick="fetchCatalogue()">Tester Catalogue</button>
+        <pre id="catalogue-result"></pre>
+    </div>
+
+    <div class="api-section">
+        <h2>Orders API</h2>
+        <p>Route: POST /orders</p>
+        <button onclick="postOrder()">Créer une commande</button>
+        <pre id="orders-result"></pre>
+    </div>
+
+    <script>
+        async function fetchCatalogue() {
+            try {
+                const response = await fetch('/api/catalogue');
+                const data = await response.json();
+                document.getElementById('catalogue-result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('catalogue-result').textContent = 'Erreur: ' + error.message;
+            }
+        }
+
+        async function postOrder() {
+            try {
+                const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'test' }) });
+                const data = await response.json();
+                document.getElementById('orders-result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('orders-result').textContent = 'Erreur: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
