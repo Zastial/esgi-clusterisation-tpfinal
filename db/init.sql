@@ -1,0 +1,16 @@
+-- Init script for PostgreSQL
+CREATE TABLE IF NOT EXISTS catalogue (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10,2)
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    item VARCHAR(255) NOT NULL,
+    quantity INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert sample data
+INSERT INTO catalogue (name, price) VALUES ('Item 1', 10.00), ('Item 2', 20.00), ('Item 3', 30.00);
