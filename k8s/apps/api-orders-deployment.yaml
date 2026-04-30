@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-orders
+  namespace: projet-final
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-orders
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: api-orders
+    spec:
+      containers:
+      - name: api-orders
+        image: api-orders:latest
+        ports:
+        - containerPort: 3001
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secret
+        livenessProbe:
+          httpGet:
+            path: /orders
+            port: 3001
+            httpHeaders:
+            - name: Content-Type
+              value: application/json
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /orders
+            port: 3001
+            httpHeaders:
+            - name: Content-Type
+              value: application/json
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
