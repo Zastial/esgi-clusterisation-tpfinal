@@ -28,8 +28,8 @@ graph TD
     FrontendSvc --> FrontendPods["frontend (Deployment, 2 replicas)"]
     CatalogueSvc --> CataloguePods["api-catalogue (Deployment, 2 replicas)"]
     OrdersSvc --> OrdersPods["api-orders (Deployment, 2-10 replicas via HPA)"]
-    PromSvc --> PromPod["prometheus (Deployment)"]
-    GrafanaSvc --> GrafanaPod["grafana (Deployment)"]
+    PromSvc --> PromPod["prometheus (Deployment + PVC 2Gi)"]
+    GrafanaSvc --> GrafanaPod["grafana (Deployment + PVC 1Gi)"]
 
     CataloguePods -->|SQL| PostgresSvc["postgres-service"]
     OrdersPods -->|SQL| PostgresSvc
@@ -95,6 +95,12 @@ kubectl get all -n projet-final
 kubectl get ingress -n projet-final
 kubectl get hpa -n projet-final
 kubectl logs deploy/api-orders -n projet-final
+
+# Sécurité et résilience ajoutées lors de la relecture
+kubectl get sa,role,rolebinding -n projet-final
+kubectl get networkpolicy -n projet-final
+kubectl get pdb -n projet-final
+kubectl get pvc -n projet-final
 ```
 
 ## Choix techniques

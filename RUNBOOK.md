@@ -37,6 +37,14 @@ sudo kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx
 sudo kubectl get pods -n ingress-nginx
 ```
 
+⚠️ Nos `NetworkPolicy` (`k8s/security/networkpolicies.yaml`) n'autorisent le trafic entrant vers
+frontend/APIs/prometheus/grafana que depuis un namespace labellisé
+`kubernetes.io/metadata.name: ingress-nginx`. Le manifest officiel ci-dessus crée bien un
+namespace `ingress-nginx`, et Kubernetes labellise automatiquement tout namespace avec son propre
+nom depuis la 1.21 — donc ça marche tel quel avec ce manifest. Si vous changez d'installation
+(Helm, autre namespace...), il faudra adapter le `namespaceSelector` dans ce fichier, sinon le
+frontend et les APIs deviennent injoignables depuis l'extérieur.
+
 Installer metrics-server pour l'HPA:
 
 ```bash
@@ -233,7 +241,60 @@ son plancher, modifiez le HPA lui-même:
 kubectl patch hpa api-orders-hpa -n projet-final --patch '{"spec":{"minReplicas":3}}'
 ```
 
-## 9. Checklist de démo
+## 9. Sécurité (RBAC / NetworkPolicy)
+
+Vérifier que les ServiceAccounts dédiés existent et sont bien utilisés par les pods:
+
+```bash
+kubectl get sa -n projet-final
+kubectl get pod -n projet-final -o custom-columns=NAME:.metadata.name,SA:.spec.serviceAccountName
+```
+
+Prouver le RBAC least-privilege sans avoir besoin d'un token monté dans un pod (fonctionne par
+impersonation depuis un kubeconfig admin):
+
+```bash
+kubectl auth can-i get configmaps -n projet-final --as=system:serviceaccount:projet-final:app-sa
+kubectl auth can-i delete pods -n projet-final --as=system:serviceaccount:projet-final:app-sa
+```
+
+Le premier doit répondre `yes`, le second `no` (le Role `app-readonly` n'autorise que get/list/watch).
+
+Vérifier les NetworkPolicy en place et tester un flux qui doit être refusé (ex: un pod quelconque
+qui tente de joindre postgres directement, hors api-catalogue/api-orders):
+
+```bash
+kubectl get networkpolicy -n projet-final
+kubectl run netpol-test --rm -it --image=busybox -n projet-final --restart=Never -- \
+  nc -zvw3 postgres-service 5432
+```
+
+Cette dernière commande doit échouer ("timed out", pas "refused" — le paquet est silencieusement
+droppé, pas rejeté), ce qui prouve que `allow-postgres-from-apis` bloque bien tout pod qui n'est
+pas `api-catalogue`/`api-orders`.
+
+## 10. Observabilité (Prometheus / Grafana)
+
+```bash
+kubectl port-forward svc/prometheus-service -n projet-final 9090:9090
+```
+
+Puis ouvrir `http://localhost:9090/targets`: `api-catalogue` et `api-orders` doivent apparaître
+`UP` (scrape via leurs annotations `prometheus.io/*` et leur endpoint `/metrics`).
+
+```bash
+kubectl port-forward svc/grafana-service -n projet-final 3000:3000
+```
+
+Puis ouvrir `http://localhost:3000` (login `admin` / mot de passe du secret `grafana-secret`) —
+la datasource Prometheus est provisionnée automatiquement, pas besoin de la configurer à la main.
+
+À screen:
+
+- la page `/targets` de Prometheus avec les deux APIs `UP`
+- un graphe Grafana simple (ex: `up{namespace="projet-final"}`)
+
+## 11. Checklist de démo
 
 1. `kubectl get all -n projet-final`
 2. accès au frontend via l'Ingress
@@ -243,3 +304,5 @@ kubectl patch hpa api-orders-hpa -n projet-final --patch '{"spec":{"minReplicas"
 6. `kubectl rollout undo` sur une API
 7. `kubectl scale` manuel sur `frontend` ou `api-catalogue`
 8. backup + restore rapide de la base
+9. `kubectl auth can-i` pour prouver le RBAC least-privilege
+10. dashboard Grafana ou page `/targets` Prometheus
