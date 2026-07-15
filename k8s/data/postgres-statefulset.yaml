@@ -41,6 +41,8 @@ spec:
             - pg_isready
             - -U
             - user
+            - -d
+            - appdb
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
@@ -49,6 +51,8 @@ spec:
             - pg_isready
             - -U
             - user
+            - -d
+            - appdb
           initialDelaySeconds: 5
           periodSeconds: 5
         resources:
