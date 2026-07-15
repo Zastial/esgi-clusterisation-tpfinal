@@ -18,9 +18,20 @@ spec:
       labels:
         app: frontend
     spec:
+      serviceAccountName: app-sa
       containers:
       - name: frontend
+        # :latest est un placeholder — la CI injecte le tag du commit (sha court) au déploiement.
+        # Pour un apply manuel, remplacez par un tag précis (ex: frontend:abcdef1).
         image: ghcr.io/zastial/esgi-clusterisation-tpfinal/frontend:latest
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 101
+          runAsGroup: 101
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+            add: ["NET_BIND_SERVICE"] # nginx doit pouvoir bind le port 80 (privilégié) sans être root
         ports:
         - containerPort: 80
         livenessProbe:

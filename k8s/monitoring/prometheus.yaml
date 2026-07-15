@@ -5,6 +5,9 @@ metadata:
   namespace: projet-final
 spec:
   replicas: 1
+  # Recreate évite qu'un rollout tente de monter la même PVC ReadWriteOnce sur 2 pods à la fois.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: prometheus
@@ -13,18 +16,50 @@ spec:
       labels:
         app: prometheus
     spec:
+      serviceAccountName: prometheus-sa
+      securityContext:
+        fsGroup: 65534 # aligne le groupe propriétaire de la PVC sur l'utilisateur "nobody" de l'image
       containers:
       - name: prometheus
         image: prom/prometheus:latest
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
         ports:
         - containerPort: 9090
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
         volumeMounts:
         - name: config
           mountPath: /etc/prometheus
+        - name: data
+          mountPath: /prometheus
       volumes:
       - name: config
         configMap:
           name: prometheus-config
+      - name: data
+        persistentVolumeClaim:
+          claimName: prometheus-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-pvc
+  namespace: projet-final
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
 
 ---
 apiVersion: v1
@@ -54,6 +89,9 @@ data:
     - job_name: 'kubernetes-pods'
       kubernetes_sd_configs:
       - role: pod
+        namespaces:
+          names:
+            - projet-final
       relabel_configs:
       - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
         action: keep

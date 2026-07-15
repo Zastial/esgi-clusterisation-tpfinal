@@ -17,10 +17,24 @@ spec:
     metadata:
       labels:
         app: api-orders
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3001"
+        prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: app-sa
       containers:
       - name: api-orders
+        # :latest est un placeholder — la CI injecte le tag du commit (sha court) au déploiement.
+        # Pour un apply manuel, remplacez par un tag précis (ex: api-orders:abcdef1).
         image: ghcr.io/zastial/esgi-clusterisation-tpfinal/api-orders:latest
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
         ports:
         - containerPort: 3001
         envFrom:
@@ -30,11 +44,8 @@ spec:
             name: app-secret
         livenessProbe:
           httpGet:
-            path: /orders
+            path: /healthz
             port: 3001
-            httpHeaders:
-            - name: Content-Type
-              value: application/json
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:

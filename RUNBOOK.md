@@ -196,7 +196,44 @@ kubectl logs statefulset/postgres -n projet-final
 - le `StatefulSet`
 - le PVC associé
 
-## 7. Checklist de démo
+## 7. Backup et restore de la base
+
+Backup ponctuel via `pg_dump` dans le pod (suffisant pour la démo; une vraie prod utiliserait un
+CronJob planifié, hors périmètre ici):
+
+```bash
+kubectl exec -n projet-final statefulset/postgres -- pg_dump -U user -d appdb > backup-$(date +%Y%m%d-%H%M).sql
+```
+
+Restore à partir d'un dump (écrase les données existantes en cas de conflit d'ID):
+
+```bash
+kubectl exec -i -n projet-final statefulset/postgres -- psql -U user -d appdb < backup-20260715-1200.sql
+```
+
+Vérifier après restore:
+
+```bash
+kubectl exec -n projet-final statefulset/postgres -- psql -U user -d appdb -c "SELECT count(*) FROM orders;"
+```
+
+## 8. Scale manuel
+
+```bash
+kubectl scale deployment frontend -n projet-final --replicas=3
+kubectl scale deployment api-catalogue -n projet-final --replicas=3
+kubectl get pods -n projet-final -l app=frontend -w
+```
+
+⚠️ `api-orders` a un HPA actif: un `kubectl scale` dessus est temporaire, le HPA va recalculer et
+réajuster le nombre de replicas au prochain cycle selon le CPU observé. Pour changer durablement
+son plancher, modifiez le HPA lui-même:
+
+```bash
+kubectl patch hpa api-orders-hpa -n projet-final --patch '{"spec":{"minReplicas":3}}'
+```
+
+## 9. Checklist de démo
 
 1. `kubectl get all -n projet-final`
 2. accès au frontend via l'Ingress
@@ -204,3 +241,5 @@ kubectl logs statefulset/postgres -n projet-final
 4. suppression d'un pod et recréation automatique
 5. affichage du HPA avant et pendant charge
 6. `kubectl rollout undo` sur une API
+7. `kubectl scale` manuel sur `frontend` ou `api-catalogue`
+8. backup + restore rapide de la base

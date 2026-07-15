@@ -5,6 +5,9 @@ metadata:
   namespace: projet-final
 spec:
   replicas: 1
+  # Recreate évite qu'un rollout tente de monter la même PVC ReadWriteOnce sur 2 pods à la fois.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: grafana
@@ -13,9 +16,18 @@ spec:
       labels:
         app: grafana
     spec:
+      serviceAccountName: app-sa
+      securityContext:
+        fsGroup: 472 # aligne le groupe propriétaire de la PVC sur l'utilisateur "grafana" de l'image
       containers:
       - name: grafana
         image: grafana/grafana:latest
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 472
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
         ports:
         - containerPort: 3000
         env:
@@ -24,12 +36,56 @@ spec:
             secretKeyRef:
               name: grafana-secret
               key: admin-password
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "300m"
         volumeMounts:
         - name: grafana-storage
           mountPath: /var/lib/grafana
+        - name: datasources
+          mountPath: /etc/grafana/provisioning/datasources
       volumes:
       - name: grafana-storage
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: grafana-pvc
+      - name: datasources
+        configMap:
+          name: grafana-datasources
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: projet-final
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# Provisionne automatiquement Prometheus comme datasource au démarrage de Grafana,
+# pour ne pas avoir à le configurer à la main pendant la démo.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: projet-final
+data:
+  datasource.yml: |
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://prometheus-service:9090
+      isDefault: true
+      editable: true
 
 ---
 apiVersion: v1

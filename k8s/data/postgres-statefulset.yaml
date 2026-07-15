@@ -14,16 +14,28 @@ spec:
       labels:
         app: postgres
     spec:
+      serviceAccountName: postgres-sa
       containers:
       - name: postgres
         image: postgres:13
+        # Pas de runAsNonRoot/capabilities drop ici: l'image officielle postgres a besoin
+        # de démarrer root pour chown le volume de données puis dropper les privilèges en
+        # interne (gosu) vers l'utilisateur postgres. Forcer non-root casse ce mécanisme.
+        securityContext:
+          allowPrivilegeEscalation: false
         ports:
         - containerPort: 5432
         env:
         - name: POSTGRES_DB
-          value: "appdb"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_NAME
         - name: POSTGRES_USER
-          value: "user"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_USER
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:

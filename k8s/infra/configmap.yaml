@@ -6,3 +6,6 @@ metadata:
 data:
   NODE_ENV: "production"
   DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "appdb"
+  DB_USER: "user"

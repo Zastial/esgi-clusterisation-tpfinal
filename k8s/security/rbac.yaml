@@ -1,0 +1,77 @@
+# ServiceAccounts dédiés + RBAC least-privilege pour chaque composant.
+# Aucun pod n'utilise plus le ServiceAccount "default" du namespace.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-sa
+  namespace: projet-final
+# Les APIs et le frontend n'appellent jamais l'API Kubernetes: pas besoin de monter
+# de token. Le Role ci-dessous documente quand même le principe de moindre privilège
+# et peut être activé (automountServiceAccountToken: true) si un besoin apparaît.
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-sa
+  namespace: projet-final
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-readonly
+  namespace: projet-final
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-readonly-binding
+  namespace: projet-final
+subjects:
+- kind: ServiceAccount
+  name: app-sa
+  namespace: projet-final
+roleRef:
+  kind: Role
+  name: app-readonly
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ServiceAccount de Prometheus: a besoin de lister/watcher les pods du namespace
+# pour la service discovery (kubernetes_sd_configs role: pod), donc on monte son
+# token (comportement par défaut) contrairement aux ServiceAccounts applicatifs.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-sa
+  namespace: projet-final
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus-discovery
+  namespace: projet-final
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-discovery-binding
+  namespace: projet-final
+subjects:
+- kind: ServiceAccount
+  name: prometheus-sa
+  namespace: projet-final
+roleRef:
+  kind: Role
+  name: prometheus-discovery
+  apiGroup: rbac.authorization.k8s.io

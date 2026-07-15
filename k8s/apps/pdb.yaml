@@ -1,0 +1,35 @@
+# minAvailable: 1 sur des Deployments à 2 replicas: un kubectl drain (ou une
+# eviction volontaire quelconque) ne peut faire tomber qu'une replica à la fois,
+# le service reste donc joignable pendant l'opération.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+  namespace: projet-final
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: frontend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-catalogue-pdb
+  namespace: projet-final
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: api-catalogue
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-orders-pdb
+  namespace: projet-final
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: api-orders
