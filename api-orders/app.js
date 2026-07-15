@@ -4,6 +4,10 @@ const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
+app.get('/orders', (req, res) => {
+  res.json({ message: 'Orders API is healthy' });
+});
+
 app.post('/orders', (req, res) => {
   const order = req.body;
   // Simulate processing
