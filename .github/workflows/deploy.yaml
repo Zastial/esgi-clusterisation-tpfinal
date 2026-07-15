@@ -52,10 +52,12 @@ jobs:
         platforms: linux/arm64
         tags: ${{ env.IMAGE_NAME }}/api-orders:latest
 
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'latest'
+    - name: Install kubectl
+      run: |
+        curl -fsSLo kubectl https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/kubectl
+        kubectl version --client
 
     - name: Configure kubeconfig
       run: |
@@ -98,4 +100,3 @@ jobs:
           ${{ env.IMAGE_NAME }}/frontend:latest
           ${{ env.IMAGE_NAME }}/api-catalogue:latest
           ${{ env.IMAGE_NAME }}/api-orders:latest
-        kubectl-version: latest
