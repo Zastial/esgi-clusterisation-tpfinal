@@ -61,6 +61,7 @@ jobs:
       run: |
         mkdir -p "$HOME/.kube"
         printf '%s' "${{ secrets.KUBE_CONFIG_DATA_B64 }}" | base64 --decode > "$HOME/.kube/config"
+        sed -i "s#127.0.0.1#${{ secrets.KUBE_API_SERVER }}#g" "$HOME/.kube/config"
         chmod 600 "$HOME/.kube/config"
 
     - name: Create Kubernetes secrets from GitHub Secrets
