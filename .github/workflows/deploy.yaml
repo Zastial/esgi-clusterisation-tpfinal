@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -12,6 +16,10 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Set lowercase image name
+      run: |
+        echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
@@ -25,21 +33,21 @@ jobs:
       with:
         context: ./frontend
         push: true
-        tags: ghcr.io/${{ github.repository }}/frontend:latest
+        tags: ${{ env.IMAGE_NAME }}/frontend:latest
 
     - name: Build and push api-catalogue
       uses: docker/build-push-action@v5
       with:
         context: ./api-catalogue
         push: true
-        tags: ghcr.io/${{ github.repository }}/api-catalogue:latest
+        tags: ${{ env.IMAGE_NAME }}/api-catalogue:latest
 
     - name: Build and push api-orders
       uses: docker/build-push-action@v5
       with:
         context: ./api-orders
         push: true
-        tags: ghcr.io/${{ github.repository }}/api-orders:latest
+        tags: ${{ env.IMAGE_NAME }}/api-orders:latest
 
     - name: Set up kubectl
       uses: azure/setup-kubectl@v3
@@ -48,8 +56,13 @@ jobs:
 
     - name: Create Kubernetes secrets from GitHub Secrets
       run: |
-        kubectl create secret generic app-secret --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" --dry-run=client -o yaml | kubectl apply -f -
-        kubectl create secret generic grafana-secret --from-literal=admin-password="${{ secrets.GRAFANA_ADMIN_PASSWORD }}" --dry-run=client -o yaml | kubectl apply -f -
+        kubectl create secret generic app-secret \
+          --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl create secret generic grafana-secret \
+          --from-literal=admin-password="${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
+          --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Deploy to Kubernetes
       uses: azure/k8s-deploy@v4
@@ -72,7 +85,7 @@ jobs:
           k8s/monitoring/prometheus.yaml
           k8s/monitoring/grafana.yaml
         images: |
-          ghcr.io/${{ github.repository }}/frontend:latest
-          ghcr.io/${{ github.repository }}/api-catalogue:latest
-          ghcr.io/${{ github.repository }}/api-orders:latest
+          ${{ env.IMAGE_NAME }}/frontend:latest
+          ${{ env.IMAGE_NAME }}/api-catalogue:latest
+          ${{ env.IMAGE_NAME }}/api-orders:latest
         kubectl-version: latest
