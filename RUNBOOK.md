@@ -185,7 +185,7 @@ Ce qu'il faut screen:
 - `kubectl top pods -n projet-final` montrant l'augmentation éventuelle
 - un éventuel changement du nombre de replicas dans les pods
 
-Si l'autoscaling ne monte pas, mentionner clairement en soutenance les causes possibles:
+Si l'autoscaling ne monte pas, les causes possibles pourraient être :
 
 - `metrics-server` absent ou non fonctionnel
 - charge insuffisante

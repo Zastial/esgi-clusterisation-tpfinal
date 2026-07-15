@@ -124,5 +124,5 @@ kubectl get pvc -n projet-final
 - Le scan d'image (Trivy) en CI est actuellement en mode rapport seul (`exit-code: 0`), il ne
   bloque pas encore le déploiement en cas de CVE critique.
 - Les `NetworkPolicy` supposent qu'ingress-nginx tourne dans un namespace nommé `ingress-nginx`
-  (cas du manifest officiel utilisé dans le RUNBOOK) — à adapter si votre cluster diffère.
-- Les preuves de résilience et de scale doivent être montrées en démo avec les commandes du runbook.
+  (cas du manifest officiel utilisé dans le RUNBOOK) — à adapter si le cluster diffère.
+- Les preuves de résilience et de scale peuvent être montrées en démo avec les commandes du runbook.
