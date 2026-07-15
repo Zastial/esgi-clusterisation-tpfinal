@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     steps:
     - name: Checkout code
@@ -33,6 +33,7 @@ jobs:
       with:
         context: ./frontend
         push: true
+        platforms: linux/arm64
         tags: ${{ env.IMAGE_NAME }}/frontend:latest
 
     - name: Build and push api-catalogue
@@ -40,6 +41,7 @@ jobs:
       with:
         context: ./api-catalogue
         push: true
+        platforms: linux/arm64
         tags: ${{ env.IMAGE_NAME }}/api-catalogue:latest
 
     - name: Build and push api-orders
@@ -47,12 +49,19 @@ jobs:
       with:
         context: ./api-orders
         push: true
+        platforms: linux/arm64
         tags: ${{ env.IMAGE_NAME }}/api-orders:latest
 
     - name: Set up kubectl
       uses: azure/setup-kubectl@v3
       with:
         version: 'latest'
+
+    - name: Configure kubeconfig
+      run: |
+        mkdir -p "$HOME/.kube"
+        printf '%s' "${{ secrets.KUBE_CONFIG_DATA_B64 }}" | base64 --decode > "$HOME/.kube/config"
+        chmod 600 "$HOME/.kube/config"
 
     - name: Create Kubernetes secrets from GitHub Secrets
       run: |

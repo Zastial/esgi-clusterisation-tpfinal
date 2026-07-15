@@ -18,6 +18,61 @@ Screenshots utiles:
 - sortie de `kubectl get ingress -n projet-final`
 - sortie de `kubectl get hpa -n projet-final`
 
+## 1bis. Bootstrap du VPS ARM64
+
+Exemple avec Ubuntu sur le VPS et `k3s` comme cluster Kubernetes léger.
+
+```bash
+sudo apt update
+sudo apt install -y curl git ca-certificates gnupg
+curl -sfL https://get.k3s.io | sh -
+sudo kubectl get nodes
+sudo kubectl get pods -A
+```
+
+Installer un Ingress Nginx:
+
+```bash
+sudo kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+sudo kubectl get pods -n ingress-nginx
+```
+
+Installer metrics-server pour l'HPA:
+
+```bash
+sudo kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+sudo kubectl -n kube-system rollout status deploy/metrics-server
+```
+
+Ouvrir les ports nécessaires si un pare-feu est actif:
+
+```bash
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 6443/tcp
+sudo ufw enable
+sudo ufw status
+```
+
+Récupérer le kubeconfig du VPS:
+
+```bash
+sudo cat /etc/rancher/k3s/k3s.yaml
+```
+
+Si GitHub Actions doit déployer dessus, encoder le kubeconfig en base64 et le mettre dans le secret GitHub `KUBE_CONFIG_DATA`:
+
+```bash
+base64 -w 0 /etc/rancher/k3s/k3s.yaml
+```
+
+Pour tester le host de l'Ingress depuis ton PC, ajoute un mapping local:
+
+```bash
+echo "IP_DU_VPS app.local" | sudo tee -a /etc/hosts
+```
+
 ## 2. Logs et diagnostic
 
 ```bash
@@ -32,6 +87,14 @@ kubectl describe deploy api-orders -n projet-final
 
 - `kubectl logs` sur une API
 - `kubectl describe pod` si un pod est en erreur
+
+Commandes utiles sur le VPS:
+
+```bash
+sudo kubectl get pods -n projet-final -o wide
+sudo kubectl logs deploy/api-orders -n projet-final
+sudo kubectl describe pod <pod-name> -n projet-final
+```
 
 ## 3. Rollout et rollback
 
@@ -58,6 +121,15 @@ kubectl get pods -n projet-final -w
 kubectl logs deploy/api-orders -n projet-final
 ```
 
+Version à exécuter sur le VPS:
+
+```bash
+sudo kubectl get pods -n projet-final
+sudo kubectl delete pod <pod-name> -n projet-final
+sudo kubectl get pods -n projet-final -w
+sudo kubectl logs deploy/api-orders -n projet-final
+```
+
 Ce qu'il faut capturer:
 
 - le pod avant suppression
@@ -80,6 +152,14 @@ Prérequis: `metrics-server` doit être installé sur le cluster.
 kubectl get hpa -n projet-final
 kubectl describe hpa api-orders-hpa -n projet-final
 kubectl top pods -n projet-final
+```
+
+Version à exécuter sur le VPS:
+
+```bash
+sudo kubectl get hpa -n projet-final
+sudo kubectl describe hpa api-orders-hpa -n projet-final
+sudo kubectl top pods -n projet-final
 ```
 
 Pour générer de la charge, tu peux lancer une charge simple depuis un pod temporaire ou depuis ta machine si l'Ingress est accessible.
