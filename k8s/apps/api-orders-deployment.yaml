@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: api-orders
-        image: api-orders:latest
+        image: ghcr.io/zastial/esgi-clusterisation-tpfinal/api-orders:latest
         ports:
         - containerPort: 3001
         envFrom:

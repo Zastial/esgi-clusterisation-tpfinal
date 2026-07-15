@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: frontend:latest
+        image: ghcr.io/zastial/esgi-clusterisation-tpfinal/frontend:latest
         ports:
         - containerPort: 80
         livenessProbe:

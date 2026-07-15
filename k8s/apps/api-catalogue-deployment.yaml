@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: api-catalogue
-        image: api-catalogue:latest
+        image: ghcr.io/zastial/esgi-clusterisation-tpfinal/api-catalogue:latest
         ports:
         - containerPort: 3000
         envFrom:

@@ -66,13 +66,19 @@ jobs:
         sed -i "s#127.0.0.1#${{ secrets.KUBE_API_SERVER }}#g" "$HOME/.kube/config"
         chmod 600 "$HOME/.kube/config"
 
+    - name: Ensure namespace exists
+      run: |
+        kubectl create namespace projet-final --dry-run=client -o yaml | kubectl apply -f -
+
     - name: Create Kubernetes secrets from GitHub Secrets
       run: |
         kubectl create secret generic app-secret \
+          -n projet-final \
           --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
           --dry-run=client -o yaml | kubectl apply -f -
 
         kubectl create secret generic grafana-secret \
+          -n projet-final \
           --from-literal=admin-password="${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
           --dry-run=client -o yaml | kubectl apply -f -
 
@@ -96,7 +102,3 @@ jobs:
           k8s/infra/ingress.yaml
           k8s/monitoring/prometheus.yaml
           k8s/monitoring/grafana.yaml
-        images: |
-          ${{ env.IMAGE_NAME }}/frontend:latest
-          ${{ env.IMAGE_NAME }}/api-catalogue:latest
-          ${{ env.IMAGE_NAME }}/api-orders:latest
