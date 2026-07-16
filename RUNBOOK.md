@@ -75,7 +75,7 @@ Si GitHub Actions doit déployer dessus, encoder le kubeconfig en base64 et le m
 base64 -w 0 /etc/rancher/k3s/k3s.yaml
 ```
 
-Pour tester le host de l'Ingress depuis ton PC, ajoute un mapping local:
+Pour tester le host de l'Ingress depuis le PC, ajouter un mapping local:
 
 ```bash
 echo "IP_DU_VPS app.local" | sudo tee -a /etc/hosts
@@ -113,6 +113,10 @@ sudo kubectl describe pod <pod-name> -n projet-final
 
 ## 3. Rollout et rollback
 
+Ces commandes servent à prouver que les déploiements sont pilotables: suivre une mise à jour en
+cours, consulter l'historique des révisions, revenir en arrière en cas de problème, ou forcer un
+redémarrage complet des pods sans changer l'image.
+
 ```bash
 kubectl rollout status deploy/api-orders -n projet-final
 kubectl rollout history deploy/api-orders -n projet-final
@@ -120,14 +124,27 @@ kubectl rollout undo deploy/api-orders -n projet-final
 kubectl rollout restart deploy/api-orders -n projet-final
 ```
 
+- `rollout status`: attend et affiche la progression d'un déploiement (à lancer juste après un
+  `kubectl apply` ou un changement d'image) pour vérifier que le rolling update se termine bien
+  sans rester bloqué.
+- `rollout history`: liste les révisions précédentes du déploiement (numéro de révision, cause du
+  changement), pour savoir vers quelle version revenir.
+- `rollout undo`: revient à la révision précédente (ou à une révision précise avec
+  `--to-revision=N`) — démontre qu'un rollback est possible en cas de mise en prod défaillante.
+- `rollout restart`: redémarre tous les pods du déploiement un par un (rolling restart) sans
+  changer l'image; utile pour recharger une config/un secret modifié, ou pour la démo de
+  résilience de la section 4.
+
 À screen:
 
-- `kubectl rollout status deploy/api-orders -n projet-final`
-- `kubectl rollout undo deploy/api-orders -n projet-final`
+- `kubectl rollout status deploy/api-orders -n projet-final`: montre le déploiement se terminer
+  avec succès (`successfully rolled out`).
+- `kubectl rollout undo deploy/api-orders -n projet-final`: montre le retour effectif à la
+  révision précédente (à confirmer avec un nouveau `kubectl rollout status` ou `kubectl get pods`).
 
 ## 4. Preuve de résilience
 
-Scenario conseillé: tuer un pod et montrer que Kubernetes le recrée.
+Scenario : tuer un pod et montrer que Kubernetes le recrée.
 
 ```bash
 kubectl get pods -n projet-final
@@ -152,7 +169,7 @@ Ce qu'il faut capturer:
 - la recréation automatique du pod avec `kubectl get pods -w`
 - un appel fonctionnel vers l'application après redémarrage
 
-Variante plus démonstrative si tu as le temps:
+Variante plus démonstrative :
 
 ```bash
 kubectl rollout restart deploy/frontend -n projet-final
@@ -177,7 +194,7 @@ sudo kubectl describe hpa api-orders-hpa -n projet-final
 sudo kubectl top pods -n projet-final
 ```
 
-Pour générer de la charge, tu peux lancer une charge simple depuis un pod temporaire ou depuis ta machine si l'Ingress est accessible.
+Pour générer de la charge, il est possible de lancer une charge simple depuis un pod temporaire ou depuis ta machine si l'Ingress est accessible.
 
 Exemple local:
 
@@ -213,8 +230,7 @@ kubectl logs statefulset/postgres -n projet-final
 
 ## 7. Backup et restore de la base
 
-Backup ponctuel via `pg_dump` dans le pod (suffisant pour la démo; une vraie prod utiliserait un
-CronJob planifié, hors périmètre ici):
+Backup ponctuel via `pg_dump` dans le pod (commande uniquement pour la démo. En production on utiliserait un CronJob planifié par exemple):
 
 ```bash
 kubectl exec -n projet-final statefulset/postgres -- pg_dump -U user -d appdb > backup-$(date +%Y%m%d-%H%M).sql
