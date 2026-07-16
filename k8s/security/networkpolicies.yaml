@@ -258,13 +258,19 @@ spec:
 ---
 # Prometheus fait sa service discovery (kubernetes_sd_configs, role: pod) en interrogeant
 # l'API Kubernetes elle-même, pas un pod du namespace: un podSelector ne peut donc pas la
-# cibler, il faut un ipBlock sur le ClusterIP du service "kubernetes" (namespace default).
-# Sans cette règle, default-deny-egress bloque cet appel: la SD ne retourne jamais aucun
-# pod (activeTargets ET droppedTargets restent vides), Prometheus ne scrape donc rien et
-# les dashboards Grafana restent vides même si tout le reste tourne correctement.
-# IP vérifiée sur ce cluster: kubectl get svc kubernetes -n default -o jsonpath='{.spec.clusterIP}'
-# (10.43.0.1, cohérent avec le service CIDR par défaut de k3s). Si ce cluster est recréé
-# avec un autre CIDR, mettez à jour ce bloc.
+# cibler. Sans cette règle, default-deny-egress bloque cet appel: la SD ne retourne jamais
+# aucun pod (activeTargets ET droppedTargets restent vides), Prometheus ne scrape donc rien
+# et les dashboards Grafana restent vides même si tout le reste tourne correctement.
+#
+# IMPORTANT: on cible l'IP réelle du node control-plane (10.0.0.103:6443), PAS le ClusterIP
+# du service "kubernetes" (10.43.0.1:443). Sur ce cluster k3s, l'enforcement des
+# NetworkPolicy se fait après la réécriture DNAT de kube-proxy: le filtre voit l'adresse
+# réelle du backend, pas le ClusterIP virtuel. Une règle sur le ClusterIP ne matche donc
+# jamais le trafic réel (vérifié: toujours "connection refused" depuis le pod Prometheus
+# une fois la règle sur 10.43.0.1 appliquée). Pour retrouver l'IP réelle sur ce cluster:
+# kubectl get endpoints kubernetes -n default (single control-plane ici, donc une seule IP;
+# `kubectl get nodes -o wide` donne la même IP). Si d'autres control-planes sont ajoutés,
+# il faudra soit lister plusieurs ipBlock, soit passer à une solution plus générique.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -279,7 +285,7 @@ spec:
   egress:
   - to:
     - ipBlock:
-        cidr: 10.43.0.1/32
+        cidr: 10.0.0.103/32
     ports:
     - protocol: TCP
-      port: 443
+      port: 6443
