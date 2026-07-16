@@ -36,6 +36,10 @@ spec:
             secretKeyRef:
               name: grafana-secret
               key: admin-password
+        - name: GF_SERVER_ROOT_URL
+          value: "http://89.168.46.10/grafana"
+        - name: GF_SERVER_SERVE_FROM_SUB_PATH
+          value: "true"
         resources:
           requests:
             memory: "128Mi"
@@ -100,3 +104,26 @@ spec:
   - port: 3000
     targetPort: 3000
   type: ClusterIP
+
+---
+# Ingress séparé sans rewrite-target : Grafana reçoit le chemin complet (/grafana/...)
+# ce qui est requis quand GF_SERVER_SERVE_FROM_SUB_PATH=true.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: projet-final
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /grafana(/|$)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: grafana-service
+            port:
+              number: 3000

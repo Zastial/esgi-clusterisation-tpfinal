@@ -18,12 +18,14 @@ spec:
     spec:
       serviceAccountName: prometheus-sa
       securityContext:
-        fsGroup: 65534 # aligne le groupe propriétaire de la PVC sur l'utilisateur "nobody" de l'image
+        fsGroup: 65534
       containers:
       - name: prometheus
         image: prom/prometheus:latest
         securityContext:
           runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]

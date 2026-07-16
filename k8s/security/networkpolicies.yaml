@@ -123,6 +123,9 @@ spec:
     - namespaceSelector:
         matchLabels:
           kubernetes.io/metadata.name: ingress-nginx
+    - podSelector:
+        matchLabels:
+          app: grafana  # Grafana doit pouvoir interroger Prometheus pour les dashboards
     ports:
     - protocol: TCP
       port: 9090
