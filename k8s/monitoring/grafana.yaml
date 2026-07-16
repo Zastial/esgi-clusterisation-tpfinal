@@ -215,7 +215,7 @@ data:
           "datasource": "Prometheus",
           "targets": [
             {
-              "expr": "sum(http_requests_total{kubernetes_namespace=\"projet-final\"}) by (app, method, route)",
+              "expr": "sum(http_requests_total{kubernetes_namespace=\"projet-final\", route!=\"/metrics\"}) by (app, method, route)",
               "legendFormat": "{{app}} {{method}} {{route}}",
               "refId": "A",
               "instant": true
