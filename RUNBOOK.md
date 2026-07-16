@@ -91,6 +91,13 @@ kubectl describe pod <pod-name> -n projet-final
 kubectl describe deploy api-orders -n projet-final
 ```
 
+Les deux APIs logguent chaque requête HTTP en JSON structuré (`method`, `path`, `status`,
+`duration_ms`, `ts`) sur stdout, sauf `/healthz` (bruit de la liveness probe). Pratique avec `jq`:
+
+```bash
+kubectl logs deploy/api-orders -n projet-final --tail=50 | jq -r 'select(.msg=="request") | "\(.status) \(.method) \(.path) \(.duration_ms)ms"'
+```
+
 À screen:
 
 - `kubectl logs` sur une API
@@ -273,6 +280,18 @@ Cette dernière commande doit échouer ("timed out", pas "refused" — le paquet
 droppé, pas rejeté), ce qui prouve que `allow-postgres-from-apis` bloque bien tout pod qui n'est
 pas `api-catalogue`/`api-orders`.
 
+Idem côté egress: prouver que le default-deny-egress bloque bien les sorties non autorisées
+(ex: un pod quelconque qui tente de joindre Internet), sauf la résolution DNS qui reste toujours
+autorisée:
+
+```bash
+kubectl run netpol-egress-test --rm -it --image=busybox -n projet-final --restart=Never -- \
+  sh -c "nslookup postgres-service && nc -zvw3 8.8.8.8 443"
+```
+
+Le `nslookup` doit réussir (règle `allow-dns-egress`), le `nc` vers Internet doit timeout
+(`default-deny-egress` sans règle egress correspondante).
+
 ## 10. Observabilité (Prometheus / Grafana)
 
 ```bash
@@ -281,6 +300,28 @@ kubectl port-forward svc/prometheus-service -n projet-final 9090:9090
 
 Puis ouvrir `http://localhost:9090/targets`: `api-catalogue` et `api-orders` doivent apparaître
 `UP` (scrape via leurs annotations `prometheus.io/*` et leur endpoint `/metrics`).
+
+En plus des métriques runtime par défaut de `prom-client` (heap, event loop...), les deux APIs
+exposent des métriques applicatives utiles pour la démo HPA, à tester dans `/graph`. Attention: le
+label de namespace posé par le `relabel_configs` de `prometheus.yaml` s'appelle
+`kubernetes_namespace`, pas `namespace`:
+
+```
+rate(http_requests_total{kubernetes_namespace="projet-final"}[1m])
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{kubernetes_namespace="projet-final"}[5m]))
+```
+
+Un dashboard **"API Overview - projet-final"** est provisionné automatiquement au démarrage de
+Grafana (ConfigMaps `grafana-dashboards-provider` + `grafana-dashboards` dans
+`k8s/monitoring/grafana.yaml`) — pas besoin de créer un panel à la main. Il apparaît directement
+dans la liste des dashboards après le déploiement, avec 4 panels: requêtes/sec par service,
+latence p95 par service, taux d'erreurs 5xx par service, pods up. Si tu ne le vois pas après un
+`kubectl apply`, c'est probablement que le pod Grafana existait déjà avant ce changement — un
+`kubectl rollout restart deploy/grafana -n projet-final` force la relecture des ConfigMaps de
+provisioning (le pod ne les relit qu'au démarrage, pas à chaud).
+
+La première montre le débit de requêtes pendant la génération de charge, la seconde la latence
+p95 — plus parlant que le CPU seul pour justifier le scale du HPA.
 
 ```bash
 kubectl port-forward svc/grafana-service -n projet-final 3000:3000

@@ -14,6 +14,10 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
+# Patch les paquets OS de l'image de base (ex: CVE critiques openssl/libcrypto déjà
+# corrigées en amont mais pas encore dans le tag node:18-alpine au moment du build).
+RUN apk update && apk upgrade --no-cache
+
 # Copy node_modules from build stage
 COPY --from=build /app/node_modules ./node_modules
 

@@ -101,6 +101,7 @@ kubectl get sa,role,rolebinding -n projet-final
 kubectl get networkpolicy -n projet-final
 kubectl get pdb -n projet-final
 kubectl get pvc -n projet-final
+kubectl get ns projet-final --show-labels   # PodSecurity Admission (baseline enforce)
 ```
 
 ## Choix techniques
@@ -113,7 +114,19 @@ kubectl get pvc -n projet-final
 - `PodDisruptionBudget` (`minAvailable: 1`) sur les Deployments applicatifs pour survivre à un
   `kubectl drain`.
 - ServiceAccounts dédiés + Role/RoleBinding namespacés (pas de `default` ni de ClusterRole) et
-  `NetworkPolicy` default-deny + règles explicites pour limiter les flux au strict nécessaire.
+  `NetworkPolicy` default-deny en **ingress et egress** + règles explicites (y compris DNS) pour
+  limiter les flux au strict nécessaire.
+- PodSecurity Admission au niveau namespace : `enforce: baseline`, `warn`/`audit: restricted`.
+  `baseline` seulement en enforce car le pod `postgres` (image officielle) démarre root pour
+  chown son volume puis droppe ses privilèges en interne — `restricted` le rejetterait.
+- Logs applicatifs structurés (JSON, un événement par requête HTTP) et métriques Prometheus
+  personnalisées (`http_requests_total`, `http_request_duration_seconds`) sur les deux APIs, en
+  plus des métriques runtime par défaut de `prom-client`.
+- Dashboard Grafana ("API Overview - projet-final") provisionné as-code via ConfigMap plutôt que
+  créé à la main dans l'UI : reproductible et survit à une PVC vide.
+- Le scan d'image (Trivy) en CI bloque le déploiement sur les CVE `CRITICAL` (`exit-code: 1`) ;
+  les CVE `HIGH` restent non bloquantes pour éviter les faux blocages sur des images de base
+  qu'on ne maîtrise pas entièrement (node/nginx/postgres).
 - Images taguées avec le sha du commit (pas seulement `:latest`) pour que `rollout undo` soit
   réellement démonstratif.
 
@@ -121,8 +134,10 @@ kubectl get pvc -n projet-final
 
 - L'alerte automatique n'est pas encore formalisée avec Alertmanager (voir RUNBOOK pour la version
   conceptuelle).
-- Le scan d'image (Trivy) en CI est actuellement en mode rapport seul (`exit-code: 0`), il ne
-  bloque pas encore le déploiement en cas de CVE critique.
-- Les `NetworkPolicy` supposent qu'ingress-nginx tourne dans un namespace nommé `ingress-nginx`
-  (cas du manifest officiel utilisé dans le RUNBOOK) — à adapter si le cluster diffère.
-- Les preuves de résilience et de scale peuvent être montrées en démo avec les commandes du runbook.
+- Les `NetworkPolicy` supposent qu'ingress-nginx tourne dans un namespace nommé `ingress-nginx` et
+  que CoreDNS tourne dans `kube-system` (cas par défaut sur k3s et sur le manifest officiel utilisé
+  dans le RUNBOOK) — à adapter si votre cluster diffère.
+- Pas de TLS sur l'Ingress (HTTP uniquement) — hors périmètre pour la démo sur VPS.
+- Aucun test unitaire ni lint sur le code applicatif ; seule l'image scanning (Trivy) satisfait
+  l'exigence qualité de la CI.
+- Les preuves de résilience et de scale doivent être montrées en démo avec les commandes du runbook.
