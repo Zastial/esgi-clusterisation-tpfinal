@@ -30,10 +30,10 @@ const httpRequestsTotal = new client.Counter({
 
 app.use(express.json());
 
-// Log structuré + métriques par requête (exclut /healthz pour ne pas noyer les
-// logs avec les pings de la liveness probe toutes les 10s).
+// Log structuré + métriques par requête (exclut /healthz et /readyz pour ne pas
+// noyer les logs avec les pings des probes de liveness/readiness).
 app.use((req, res, next) => {
-  if (req.path === '/healthz') return next();
+  if (req.path === '/healthz' || req.path === '/readyz') return next();
   const start = process.hrtime.bigint();
   res.on('finish', () => {
     const durationSeconds = Number(process.hrtime.bigint() - start) / 1e9;
@@ -56,6 +56,16 @@ app.use((req, res, next) => {
 
 app.get('/healthz', (req, res) => {
   res.status(200).send('ok');
+});
+
+app.get('/readyz', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).send('ok');
+  } catch (err) {
+    console.error('Readiness check failed', err);
+    res.status(503).json({ message: 'Database unavailable' });
+  }
 });
 
 app.get('/metrics', async (req, res) => {
