@@ -54,6 +54,10 @@ spec:
           mountPath: /var/lib/grafana
         - name: datasources
           mountPath: /etc/grafana/provisioning/datasources
+        - name: dashboards-provider
+          mountPath: /etc/grafana/provisioning/dashboards
+        - name: dashboards
+          mountPath: /var/lib/grafana-dashboards
       volumes:
       - name: grafana-storage
         persistentVolumeClaim:
@@ -61,6 +65,12 @@ spec:
       - name: datasources
         configMap:
           name: grafana-datasources
+      - name: dashboards-provider
+        configMap:
+          name: grafana-dashboards-provider
+      - name: dashboards
+        configMap:
+          name: grafana-dashboards
 
 ---
 apiVersion: v1
@@ -92,6 +102,110 @@ data:
       url: http://prometheus-service:9090
       isDefault: true
       editable: true
+
+---
+# Déclare le provider de dashboards "as code": Grafana charge tout fichier .json posé
+# dans /var/lib/grafana-dashboards au démarrage, pas besoin de cliquer dans l'UI.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-provider
+  namespace: projet-final
+data:
+  provider.yml: |
+    apiVersion: 1
+    providers:
+    - name: default
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 30
+      allowUiUpdates: true
+      options:
+        path: /var/lib/grafana-dashboards
+
+---
+# Dashboard provisionné automatiquement (survit à un redéploiement / une PVC vide,
+# contrairement à un dashboard créé à la main dans l'UI). Les métriques scrapées par
+# Prometheus portent le label "kubernetes_namespace" (pas "namespace", voir le
+# relabel_configs dans prometheus.yaml) et "app" (mappé depuis le label de pod "app").
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: projet-final
+data:
+  api-overview.json: |
+    {
+      "uid": "api-overview",
+      "title": "API Overview - projet-final",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "editable": true,
+      "refresh": "10s",
+      "time": { "from": "now-15m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Requêtes / sec par service",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{kubernetes_namespace=\"projet-final\"}[1m])) by (app)",
+              "legendFormat": "{{app}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Latence p95 par service",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "datasource": "Prometheus",
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{kubernetes_namespace=\"projet-final\"}[5m])) by (le, app))",
+              "legendFormat": "{{app}} p95",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Erreurs 5xx / sec par service",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{kubernetes_namespace=\"projet-final\", status_code=~\"5..\"}[1m])) by (app)",
+              "legendFormat": "{{app}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Pods up",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum(up{kubernetes_namespace=\"projet-final\"}) by (app)",
+              "legendFormat": "{{app}}",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }
 
 ---
 apiVersion: v1

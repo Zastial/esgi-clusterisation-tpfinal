@@ -122,6 +122,8 @@ kubectl get ns projet-final --show-labels   # PodSecurity Admission (baseline en
 - Logs applicatifs structurés (JSON, un événement par requête HTTP) et métriques Prometheus
   personnalisées (`http_requests_total`, `http_request_duration_seconds`) sur les deux APIs, en
   plus des métriques runtime par défaut de `prom-client`.
+- Dashboard Grafana ("API Overview - projet-final") provisionné as-code via ConfigMap plutôt que
+  créé à la main dans l'UI : reproductible et survit à une PVC vide.
 - Le scan d'image (Trivy) en CI bloque le déploiement sur les CVE `CRITICAL` (`exit-code: 1`) ;
   les CVE `HIGH` restent non bloquantes pour éviter les faux blocages sur des images de base
   qu'on ne maîtrise pas entièrement (node/nginx/postgres).
