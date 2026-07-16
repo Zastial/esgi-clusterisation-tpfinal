@@ -1,4 +1,16 @@
+# PodSecurity Admission: "restricted" est visé, mais imposé seulement en warn/audit car
+# le pod postgres (image officielle) démarre root pour chown le volume de données avant
+# de dropper ses privilèges via gosu (voir commentaire dans postgres-statefulset.yaml) —
+# "restricted" le rejetterait à l'admission. "baseline" bloque quand même le principal
+# (privileged, hostNetwork/hostPID/hostIPC, hostPath, capabilities dangereuses).
 apiVersion: v1
 kind: Namespace
 metadata:
   name: projet-final
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest

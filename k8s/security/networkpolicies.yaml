@@ -149,3 +149,109 @@ spec:
     ports:
     - protocol: TCP
       port: 3000
+
+---
+# Egress: même logique que l'ingress, default-deny + règles explicites. Sans ça, tous
+# les pods du namespace (y compris postgres) peuvent initier n'importe quelle connexion
+# sortante, y compris vers Internet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: projet-final
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+---
+# La résolution DNS passe par CoreDNS dans kube-system pour tous les pods (Service
+# discovery par nom, ex: postgres-service). Sans cette règle, plus aucune requête DNS
+# ne sort et tout le reste casse silencieusement.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: projet-final
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-apis-egress-to-postgres
+  namespace: projet-final
+spec:
+  podSelector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values: ["api-catalogue", "api-orders"]
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-egress-to-targets
+  namespace: projet-final
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: api-catalogue
+    ports:
+    - protocol: TCP
+      port: 3000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: api-orders
+    ports:
+    - protocol: TCP
+      port: 3001
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-grafana-egress-to-prometheus
+  namespace: projet-final
+spec:
+  podSelector:
+    matchLabels:
+      app: grafana
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: prometheus
+    ports:
+    - protocol: TCP
+      port: 9090

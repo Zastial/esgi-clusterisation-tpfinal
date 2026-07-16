@@ -26,6 +26,8 @@ spec:
           runAsNonRoot: true
           runAsUser: 472
           allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
           capabilities:
             drop: ["ALL"]
         ports:
