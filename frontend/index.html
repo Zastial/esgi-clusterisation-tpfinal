@@ -25,6 +25,8 @@
         <h2>Orders API</h2>
         <p>Route: POST /orders</p>
         <button onclick="postOrder()">Créer une commande</button>
+        <p>Route: GET /orders</p>
+        <button onclick="fetchOrders()">Voir les commandes</button>
         <pre id="orders-result"></pre>
     </div>
 
@@ -42,6 +44,16 @@
         async function postOrder() {
             try {
                 const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item: 'test' }) });
+                const data = await response.json();
+                document.getElementById('orders-result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('orders-result').textContent = 'Erreur: ' + error.message;
+            }
+        }
+
+        async function fetchOrders() {
+            try {
+                const response = await fetch('/api/orders');
                 const data = await response.json();
                 document.getElementById('orders-result').textContent = JSON.stringify(data, null, 2);
             } catch (error) {

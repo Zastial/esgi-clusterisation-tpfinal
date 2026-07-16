@@ -206,6 +206,21 @@ data:
               "refId": "A"
             }
           ]
+        },
+        {
+          "id": 5,
+          "type": "bargauge",
+          "title": "Appels totaux par endpoint",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum(http_requests_total{kubernetes_namespace=\"projet-final\"}) by (app, method, route)",
+              "legendFormat": "{{app}} {{method}} {{route}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
         }
       ]
     }
