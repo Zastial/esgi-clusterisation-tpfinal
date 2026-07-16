@@ -43,11 +43,14 @@ spec:
         - name: GF_SERVER_SERVE_FROM_SUB_PATH
           value: "true"
         resources:
+          # 256Mi de limite provoquait un OOMKill régulier (indexation des dashboards/
+          # recherche + bundles react servis en mémoire), qui se traduisait par des
+          # 502 côté ingress pendant le redémarrage du pod (une seule replica).
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "300m"
         volumeMounts:
         - name: grafana-storage

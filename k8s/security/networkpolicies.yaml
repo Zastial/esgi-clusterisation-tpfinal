@@ -255,3 +255,31 @@ spec:
     ports:
     - protocol: TCP
       port: 9090
+---
+# Prometheus fait sa service discovery (kubernetes_sd_configs, role: pod) en interrogeant
+# l'API Kubernetes elle-même, pas un pod du namespace: un podSelector ne peut donc pas la
+# cibler, il faut un ipBlock sur le ClusterIP du service "kubernetes" (namespace default).
+# Sans cette règle, default-deny-egress bloque cet appel: la SD ne retourne jamais aucun
+# pod (activeTargets ET droppedTargets restent vides), Prometheus ne scrape donc rien et
+# les dashboards Grafana restent vides même si tout le reste tourne correctement.
+# IP vérifiée sur ce cluster: kubectl get svc kubernetes -n default -o jsonpath='{.spec.clusterIP}'
+# (10.43.0.1, cohérent avec le service CIDR par défaut de k3s). Si ce cluster est recréé
+# avec un autre CIDR, mettez à jour ce bloc.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-egress-to-kube-apiserver
+  namespace: projet-final
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 10.43.0.1/32
+    ports:
+    - protocol: TCP
+      port: 443
