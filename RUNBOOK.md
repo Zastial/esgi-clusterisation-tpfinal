@@ -11,12 +11,8 @@ kubectl get svc -n projet-final
 kubectl get ingress -n projet-final
 kubectl get hpa -n projet-final
 ```
+<img width="1270" height="904" alt="image" src="https://github.com/user-attachments/assets/05746428-9007-4f90-ac35-ee4bec47d3ca" />
 
-Screenshots utiles:
-
-- sortie de `kubectl get all -n projet-final`
-- sortie de `kubectl get ingress -n projet-final`
-- sortie de `kubectl get hpa -n projet-final`
 
 ## 1bis. Bootstrap du VPS ARM64
 
@@ -97,11 +93,8 @@ Les deux APIs logguent chaque requête HTTP en JSON structuré (`method`, `path`
 ```bash
 kubectl logs deploy/api-orders -n projet-final --tail=50 | jq -r 'select(.msg=="request") | "\(.status) \(.method) \(.path) \(.duration_ms)ms"'
 ```
+<img width="1784" height="796" alt="image" src="https://github.com/user-attachments/assets/caeee3cb-fecb-4b44-8570-b28384f9d963" />
 
-À screen:
-
-- `kubectl logs` sur une API
-- `kubectl describe pod` si un pod est en erreur
 
 Commandes utiles sur le VPS:
 
@@ -135,13 +128,6 @@ kubectl rollout restart deploy/api-orders -n projet-final
   changer l'image; utile pour recharger une config/un secret modifié, ou pour la démo de
   résilience de la section 4.
 
-À screen:
-
-- `kubectl rollout status deploy/api-orders -n projet-final`: montre le déploiement se terminer
-  avec succès (`successfully rolled out`).
-- `kubectl rollout undo deploy/api-orders -n projet-final`: montre le retour effectif à la
-  révision précédente (à confirmer avec un nouveau `kubectl rollout status` ou `kubectl get pods`).
-
 ## 4. Preuve de résilience
 
 Scenario : tuer un pod et montrer que Kubernetes le recrée.
@@ -161,13 +147,6 @@ sudo kubectl delete pod <pod-name> -n projet-final
 sudo kubectl get pods -n projet-final -w
 sudo kubectl logs deploy/api-orders -n projet-final
 ```
-
-Ce qu'il faut capturer:
-
-- le pod avant suppression
-- la commande `kubectl delete pod <pod-name> -n projet-final`
-- la recréation automatique du pod avec `kubectl get pods -w`
-- un appel fonctionnel vers l'application après redémarrage
 
 Variante plus démonstrative :
 
@@ -202,19 +181,6 @@ Exemple local:
 while true; do curl -s -X POST http://app.local/api/orders -H 'Content-Type: application/json' -d '{"item":"test"}' >/dev/null; done
 ```
 
-Ce qu'il faut screen:
-
-- `kubectl get hpa -n projet-final` avant charge
-- `kubectl describe hpa api-orders-hpa -n projet-final` pendant charge
-- `kubectl top pods -n projet-final` montrant l'augmentation éventuelle
-- un éventuel changement du nombre de replicas dans les pods
-
-Si l'autoscaling ne monte pas, les causes possibles pourraient être :
-
-- `metrics-server` absent ou non fonctionnel
-- charge insuffisante
-- seuil CPU trop élevé
-
 ## 6. Base de données
 
 ```bash
@@ -222,11 +188,6 @@ kubectl get statefulset -n projet-final
 kubectl get pvc -n projet-final
 kubectl logs statefulset/postgres -n projet-final
 ```
-
-À screen:
-
-- le `StatefulSet`
-- le PVC associé
 
 ## 7. Backup et restore de la base
 
@@ -346,20 +307,4 @@ kubectl port-forward svc/grafana-service -n projet-final 3000:3000
 Puis ouvrir `http://localhost:3000` (login `admin` / mot de passe du secret `grafana-secret`) —
 la datasource Prometheus est provisionnée automatiquement, pas besoin de la configurer à la main.
 
-À screen:
-
-- la page `/targets` de Prometheus avec les deux APIs `UP`
-- un graphe Grafana simple (ex: `up{namespace="projet-final"}`)
-
-## 11. Checklist de démo
-
-1. `kubectl get all -n projet-final`
-2. accès au frontend via l'Ingress
-3. test de `api-catalogue` et `api-orders`
-4. suppression d'un pod et recréation automatique
-5. affichage du HPA avant et pendant charge
-6. `kubectl rollout undo` sur une API
-7. `kubectl scale` manuel sur `frontend` ou `api-catalogue`
-8. backup + restore rapide de la base
-9. `kubectl auth can-i` pour prouver le RBAC least-privilege
-10. dashboard Grafana ou page `/targets` Prometheus
+<img width="2940" height="1596" alt="image" src="https://github.com/user-attachments/assets/6dfb1787-ff36-4c08-9614-3c96a5ac4a68" />
