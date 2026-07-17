@@ -129,15 +129,3 @@ kubectl get ns projet-final --show-labels   # PodSecurity Admission (baseline en
   qu'on ne maîtrise pas entièrement (node/nginx/postgres).
 - Images taguées avec le sha du commit (pas seulement `:latest`) pour que `rollout undo` soit
   réellement démonstratif.
-
-## Limites
-
-- L'alerte automatique n'est pas encore formalisée avec Alertmanager (voir RUNBOOK pour la version
-  conceptuelle).
-- Les `NetworkPolicy` supposent qu'ingress-nginx tourne dans un namespace nommé `ingress-nginx` et
-  que CoreDNS tourne dans `kube-system` (cas par défaut sur k3s et sur le manifest officiel utilisé
-  dans le RUNBOOK) — à adapter si votre cluster diffère.
-- Pas de TLS sur l'Ingress (HTTP uniquement) — hors périmètre pour la démo sur VPS.
-- Aucun test unitaire ni lint sur le code applicatif ; seule l'image scanning (Trivy) satisfait
-  l'exigence qualité de la CI.
-- Les preuves de résilience et de scale doivent être montrées en démo avec les commandes du runbook.
